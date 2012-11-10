@@ -1,0 +1,403 @@
+Notes for ESF
+07-06-09
+   periInternalFrame will open
+   need to format the window
+
+06-25-09
+   OK,  when insert new record  
+        set default date 0000-00-00, if not error    value (?,?)
+        if (temp[1].equals("")) {
+			temp[1] = "0000-00-00";
+		}
+   HOWEVER,  JTable will not read 0000-00-00 
+         Starting with Connector/J 3.1.7, ResultSet.getString() can be decoupled from this behavior via 
+         noDatetimeStringSync=true                           
+   
+   periInternalFrame will not open
+
+
+06-22-09  
+	* createStatement()
+    	  set default date 0000-00-00, if not error 
+                           value (?,?)
+
+// 06-18-09
+// separate screen
+//     pre-populate fields:   Date,  
+// need to fix titles 
+   ********test**********  multi rows update
+  
+  
+  
+  
+  date format notes
+  
+     //string containing date in one format  
+       String strDate = "12/12/07"; 
+         try    {
+             //create SimpleDateFormat object with source string date format
+                   SimpleDateFormat sdfSource = new SimpleDateFormat("dd/MM/yy"); 
+             //parse the string into Date object   
+                Date date = sdfSource.parse(strDate);  
+                     //create SimpleDateFormat object with desired date format 
+             SimpleDateFormat sdfDestination = new SimpleDateFormat("MM-dd-yyyy hh:mm:ss");       //parse the date into another format     
+             strDate = sdfDestination.format(date);     
+             System.out.println("Date is converted from dd/MM/yy format to MM-dd-yyyy hh:mm:ss");      System.out.println("Converted date is : " + strDate); 
+             
+         }    catch(ParseException pe)    {       System.out.println("Parse Exception : " + pe);    }  }} 
+   sdf = new SimpleDateFormat("dd/MM/yyyy");    strDate = sdf.format(date);
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+import java.sql.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Vector;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.table.AbstractTableModel;
+import java.util.Collections;
+ 
+/**
+ *
+ * @author SShpk
+ */
+//we are going to override methods of AbstracTableModel Class
+/**This class forms view of DB table which will be loaded into JTable swing component*/
+public class JTableAdapter extends AbstractTableModel{
+        //my table name
+        private String tableName ="Sheet";
+	//frame for error exception output
+        private JFrame jframeError = new JFrame("Connection error");
+        //variables for transactions
+        private Connection connection;
+        private Statement  statement;
+        private ResultSet  resultSet;
+        private ResultSetMetaData metaData;
+        //names of colums --- will get them from DB table
+        public  String[]   columnNames;
+        //this Vector will  keep rows of table
+        private Vector     rows = new Vector();
+        private int i;
+        private String t="";
+    
+    /** Creates a new instance of JTableAdapter */
+    public JTableAdapter(String url, String driverName, String user, String password) {
+        
+        jframeError.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);//frame for showing errors
+        //this String var I use to avoid problem with Date/Datestamps e.t.c. like ?0000-00-00?
+	//because java converts them to NULL. This is terrible fact. Do not lose this comment!
+        String overrideBADDATE="zeroDateTimeBehavior=convertToNull&";
+	//let?s put together all params
+        //common view is: :jdbc:mysql://yourhost.com:port_num/NameofYourDB?<property&>
+        t=url+overrideBADDATE+"user="+user+"&password="+password;
+        try{	//trying to load driver
+            Class.forName(driverName);
+            connection=DriverManager.getConnection(t);
+            statement = connection.createStatement();
+                                //this commented code will be useful for you in debug proccess.
+                                //it will give you list of all loaded drivers to driver managers
+                                //so you will be able to see is your jdbc driver loaded or not.
+                               /*  
+                                 try{
+                                      List drivers = Collections.list(DriverManager.getDrivers());
+                                      for(int i=0;i<drivers.size();i++){
+                                          Driver driver = (Driver)drivers.get(i);
+                                          String driverName1 = driver.getClass().getName();
+                                          System.out.println("Driver "+i+":::"+driverName1);
+                                      }
+                                 }catch(Exception e){
+                                      System.out.println(e);
+                                 }//catch in try
+                               */
+        }//try
+        //let's catch exceptions.
+        //see messages to get the meaning of exception
+        catch(ClassNotFoundException ex){
+                     JOptionPane.showMessageDialog(jframeError,
+                                                    "Error occurred during driver load"+driverName,
+                                                    "Driver load error:"+ex.getMessage(),
+                                                    JOptionPane.ERROR_MESSAGE);
+                                                    jframeError.setVisible(true);
+        }//catch1
+        catch(SQLException ex){
+                     JOptionPane.showMessageDialog(jframeError,
+                                                    "Error connecting DB"+url,
+                                                    "DB Connection error:"+ex.getMessage(),
+                                                    JOptionPane.ERROR_MESSAGE);
+                                                    jframeError.setVisible(true);
+        }//catch2
+    //executing SELECT query to fill our table
+     executeQuery("SELECT * FROM " + this.tableName);   
+    }//constructor
+    /**method sends SELECT query and parses result of this query*/
+    public void executeQuery(String query){
+        //testing for alive connection
+        if(connection== null || statement == null){
+                        JOptionPane.showMessageDialog(jframeError,
+                                                    "Error occurred during query post",
+                                                    "DB connection error",
+                                                    JOptionPane.ERROR_MESSAGE);
+                                                    jframeError.setVisible(true);
+        }
+	//let?s parse result of query
+        try{
+            resultSet = statement.executeQuery(query);
+            //get num of columns in table   /***/getColumnCount()
+            //get names of columns          /***/getColumnLabel(i+1)
+            metaData = resultSet.getMetaData();
+            int numberOfColumns = metaData.getColumnCount();
+           //getting names of DB table columns
+            columnNames = new String[numberOfColumns];
+            for(i=0;i<numberOfColumns;i++){
+                    columnNames[i]= metaData.getColumnLabel(i+1);
+            }//for
+            Object testnulledobj;
+            rows = new Vector();
+            //from the beginning of resultSet up to the END
+            while (resultSet.next()){
+                //each row of  DB table is Vector
+                Vector newRow = new Vector();
+                for (i=1; i<= getColumnCount();i++){
+                    testnulledobj=resultSet.getObject(i);
+                   	//this IF statement I will develop 
+                        //to output NULL-object Date (like Date field = 0000-00-00)
+                    if(resultSet.wasNull()){
+                            testnulledobj=new String("");
+                    }
+                    newRow.addElement(testnulledobj);
+                }//for
+		//row from DB is completed. Every row will be in Vector of Rows.
+		//I hope you got my idea.
+		//We collect row cells of DB table row in Vector
+		//Then we put this Vector into another Vector, which consists of DB rows 
+                rows.addElement(newRow);
+            }//while
+            //table is changed
+            fireTableChanged(null);
+        }//try
+        
+        catch(SQLException ex){
+                    JOptionPane.showMessageDialog(jframeError,
+                                                    "Error occurred during query result parsing",
+                                                    "Data accept error",
+                                                    JOptionPane.ERROR_MESSAGE);
+                                                    jframeError.setVisible(true);
+        }
+    }//executeQuery
+    /**cell of table editable or not?*/
+    public boolean isCellEditable(int row,int column){
+        /*Testing field(aka column) property. We get it from DB.
+        try{
+            return metaData.isWritable(column+1);
+        }//try
+        catch(SQLException e){
+            return false;
+        }//catch
+         */
+        /****LOCKING ID FIELD***/
+        if(column>0) return true;
+        else return false;
+    }//isCellEditable
+    
+    //these three methods very simple. I think they do not need any explanations
+    /**set column name in JTable*/
+    public String getColumnName(int column){
+        return this.columnNames[column];
+    }
+    /**get quantity of rows in table*/
+    public int getRowCount(){
+        return this.rows.size();
+    }
+     /**get quantity of columns in table*/
+    public int getColumnCount(){
+        return this.columnNames.length;
+    }
+    /**get value from JTable cell*/
+    public Object getValueAt(int aRow, int aColumn){
+        Vector row = (Vector)rows.elementAt(aRow);
+        return row.elementAt(aColumn);
+    }
+    
+     //if user edited cell (double-click on it and then went away) 
+     //we need to update DB table and JTable also.
+     //this is not pretty good variant, because we will flood DB with plenty of small queries.
+     //the best way is to save value of "double-clicked" cell. Then we have to compare its value before
+     //focus and after. If values differ, then we update DB table, else ? no update
+     //unfortunately I do not know how to control focus method of JTable cell
+    /**update DB table cell value*/
+    public void setValueAt(Object value, int row, int column){
+            //Before updating DB table cell we need to update JTable cell
+            Object val;
+            val = tbRepresentation(column, value);
+            Vector dataRow = (Vector)rows.elementAt(row);
+            dataRow.setElementAt(val,column);
+            //Now it's time to update DB table
+        try{
+            //get name of column in DB table (our JTable has the same column names)
+            //it's possible to give them normal names instead of user_id,user_name e.t.c.
+            //I am sure, user of your app will prefer to see normal names of columns, not like listed before
+            String columnName = getColumnName(column);
+            //This is very bad example of update query.
+            //You have to determine automatically key field. but still I didn't find how to do that
+            //But it's possible to do through metadata. I am sure.
+            //Just need some more time
+            //When I am designing DB I  prefer to name key field in each table as "ID" 
+            String query = "UPDATE "
+                                    +tableName+ 
+                           " SET "+columnName+" = "+"'"+dbRepresentation(column,getValueAt(row, column))+"'"+ 
+                           " WHERE ID = "+dbRepresentation(0,getValueAt(row, 0));
+            //extremely important string for debug 
+            System.out.println("UPDATE QUERY:::"+query);
+            //executing update query
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            pstmt.executeUpdate();
+        }//try
+        catch(Exception ex){
+             JOptionPane.showMessageDialog(jframeError,
+                                                    "?????? ??? ?????????? ?????? ? ??????? ??",
+                                                    "?????? ???????? ??? ?????????? ?????? ? ??",
+                                                    JOptionPane.ERROR_MESSAGE);
+                                                    jframeError.setVisible(true);
+        }//catch
+    }//setValueAt
+    
+    //Next two methods are very neccessary. And they need accurate testing
+    //they convert DB datatypes into java datatypes and backwards
+    
+    /**convert SQL (MySQL in this case) datatypes into datatypes which java accepts*/
+    public Object tbRepresentation(int column, Object value) throws NumberFormatException{
+        Object val;
+        int type;
+        
+        if(value == null){
+            return "null";
+        }//if null
+        try{
+            type = metaData.getColumnType(column+1);
+        }//try
+        catch (SQLException e){
+            JOptionPane.showMessageDialog(jframeError,
+                                                    "Error occured during Table update",
+                                                    "Error occured during DB table field type get",
+                                                    JOptionPane.ERROR_MESSAGE);
+                                                    jframeError.setVisible(true);
+            return value.toString();
+        }//catch
+        switch(type){
+            case Types.BIGINT:
+                    return val = new Long(value.toString());
+            case Types.TINYINT:
+            case Types.SMALLINT:
+            case Types.INTEGER:
+                return val = new Integer(value.toString());
+            case Types.REAL:
+            case Types.FLOAT:
+            case Types.DOUBLE:
+            case Types.DECIMAL:    
+                    return val = new Double(value.toString());
+            case Types.CHAR:
+            case Types.BLOB:
+            case Types.VARCHAR:
+            case Types.LONGNVARCHAR:    
+                    return val = new String(value.toString());
+            case Types.DATE:
+                    return val = new String(value.toString());
+            default: return val = new String(value.toString());
+        }//switch
+    }//tbRepresentation 
+    /**conver Java datatypes into SQL (MySQL) datatypes*/
+    public Object dbRepresentation(int column, Object value){
+         Object val;
+        int type;
+        
+        if(value == null){
+            return "null";
+        }//if null
+        //my preparations for accurate work with "nulled" dates/time/e.t.c
+        //this IF statement doesn't play any important role
+        String testbaddate="0000-00-00";
+        if(value.toString().equals(testbaddate)){
+            return value.toString();
+        }     
+        try{
+            type = metaData.getColumnType(column+1);
+        }//try
+        catch (SQLException e){
+            
+            return value.toString();
+        }//catch
+        switch(type){
+            case Types.BIGINT:
+                    return val = new Long(value.toString());
+            case Types.TINYINT:
+            case Types.SMALLINT:
+            case Types.INTEGER:
+                    return val = new Integer(value.toString());
+            case Types.DECIMAL:
+            case Types.FLOAT:
+            case Types.DOUBLE:
+                    return val = new Double(value.toString());
+            case Types.VARCHAR:
+            case Types.CHAR:
+                    return val = new String(value.toString());
+            case Types.DATE:
+                     return val = new String(value.toString());
+            default: return val = new String(value.toString());
+        }//switch
+    }//dbRepresentation   
+    
+    //my preparations to read from SELECT query result
+    //"nulled" dates/time/e.t.c.
+    private Object testObject(Object obj){
+        Object val= new String("");
+        if(obj==null) return new String(val.toString());
+            else return obj;
+    }
+}//class
+
+
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+ 
+public class TableCreate extends JPanel{
+    
+    /** Creates a new instance of TableCreate */
+    public TableCreate() {
+        super(new GridLayout(1,0));
+        JTable table = new JTable(new JTableAdapter("jdbc:mysql://localhost/Document?","com.mysql.jdbc.Driver","root",""));
+        table.setPreferredScrollableViewportSize(new Dimension(500,210));
+        JScrollPane scrollpane = new JScrollPane(table);
+        add(scrollpane);
+    }
+    public JPanel getJpanelTable(){
+        return this;
+    }
+ 
+    public static void main(String[] args){
+        JFrame jframe = new JFrame("Test");
+            TableCreate tcreate = new TableCreate();
+                jframe.add(tcreate.getJpanelTable());
+                jframe.pack();
+                jframe.setVisible(true);
+}//main
+ 
+}
+
+
+
+

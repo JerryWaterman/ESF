@@ -1,0 +1,210 @@
+
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.sql.*;
+import java.sql.Date;
+import java.util.*;
+
+import javax.swing.*;
+import javax.swing.table.*;
+
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+import javax.swing.event.*;
+
+public class periTest2Table extends JFrame implements ActionListener {
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	private TableColumn column;
+	QueryTableModel qtm = new QueryTableModel();
+
+	public periTest2Table()  {
+        Vector<String> colNames = new Vector<String>();
+        Vector<Vector<Object>> data = new Vector<Vector<Object>>();
+        try
+        {   //  Connect to the Database
+       	 	Class.forName("com.mysql.jdbc.Driver");
+   			String driver = "com.mysql.jdbc.Driver";
+   			String url = "jdbc:mysql://localhost/test";
+   			String username = "root";
+   			String password = "hoTTub11";
+   			Class.forName(driver); // load MySQL driver
+   			Connection con = DriverManager.getConnection(url, username, password);
+     		//"Select * from test.jerryperiphyton";
+            String sql = "Select pdate,sid,lid,cid,rep,matrix,ptype,name,1stdilution_mL," +
+            		"1stsubsample_mL,2nddilution_ml,2ndsubsamlpe_mL,3rddilution_ml,47mmfiltervolume_mL," +
+            		"25mmfiltervolume_ml,chlafiltervolume_mL from test.jerryperiphyton";
+            Statement stmt = con.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+            ResultSetMetaData md = rs.getMetaData();
+            int columns = md.getColumnCount();
+            colNames.addElement("Date");
+            colNames.addElement("SID");
+            colNames.addElement("LID");
+            colNames.addElement("CID");
+            colNames.addElement("REP");
+            colNames.addElement("Matrix");
+            colNames.addElement("Type");
+            colNames.addElement("Name");
+            colNames.addElement("Vol. After \nWash\n (mL)");
+            colNames.addElement("Pre-dilution\nAliquot\n (mL)");
+            colNames.addElement("1st\n Dilution\n(mL)");
+            colNames.addElement("1st Sub-\nSample\n(mL)");
+            colNames.addElement("2nd\nDilution\n(mL)");
+            colNames.addElement("3rd\nDilution");
+            colNames.addElement("47 mm\nFilter\nVolume");
+            colNames.addElement("25 mm");
+            colNames.addElement("chla filter");
+            colNames.addElement("");
+            while (rs.next())
+            {
+                Vector<Object> row = new Vector<Object>(columns);
+                 for (int i = 1; i <= columns; i++)
+                {
+                    row.addElement( rs.getObject(i) );
+                }
+                data.addElement( row );
+                System.out.println("row firstElement = " + row.firstElement()); 
+                String sDate = row.toString();
+                String sd = sDate.substring(1, 11);
+                System.out.println(" date  = " + sd); 
+            } 
+            rs.close();
+            stmt.close();
+        }
+        catch(Exception e)
+        {
+            System.out.println( e );
+        }
+        JTable table = new JTable(data, colNames);
+        //JTable table = new JTable(qtm);
+        MultiLineHeaderRenderer renderer = new MultiLineHeaderRenderer();
+        Enumeration<TableColumn> e = table.getColumnModel().getColumns();
+        while (e.hasMoreElements()) {
+        	((TableColumn) e.nextElement()).setHeaderRenderer(renderer);
+        }
+        JScrollPane scrollPane = new JScrollPane( table );
+        column = table.getColumnModel().getColumn(0);  //pdata
+        column.setPreferredWidth(130);
+        column = table.getColumnModel().getColumn(1);  //sid
+        column.setPreferredWidth(35);
+        column = table.getColumnModel().getColumn(2);  //lid 
+        column.setPreferredWidth(30);
+        column = table.getColumnModel().getColumn(3);  //cid
+        column.setPreferredWidth(35);
+        column = table.getColumnModel().getColumn(4);  //rep
+        column.setPreferredWidth(35);
+        column = table.getColumnModel().getColumn(5);  //matrix
+        column.setPreferredWidth(45);
+        column = table.getColumnModel().getColumn(6);  //ptype
+        column.setPreferredWidth(35);
+        column = table.getColumnModel().getColumn(7);  //name
+        column.setPreferredWidth(50);
+        column = table.getColumnModel().getColumn(8);  //volafterwash_mL
+        column.setPreferredWidth(65);
+        column = table.getColumnModel().getColumn(9);  //predilutionaliquid
+        column.setPreferredWidth(85);
+        column = table.getColumnModel().getColumn(10); //1stdilutiond
+        column.setPreferredWidth(65);
+        column = table.getColumnModel().getColumn(11); //1stsubdilutiond
+        column.setPreferredWidth(65);
+        
+        getContentPane().add(scrollPane);
+        //getContentPane().
+        JPanel buttonPanel = new JPanel();
+        getContentPane().add( buttonPanel, BorderLayout.SOUTH);
+         
+        JButton jb = new JButton ("Add Data");
+        jb.addActionListener (this);
+        jb.setActionCommand("add");
+        buttonPanel.add (jb);
+   
+        jb = new JButton ("Delete Data");
+        jb.addActionListener (this);
+        buttonPanel.add (jb);
+   
+        jb = new JButton ("Edit Data");
+        jb.addActionListener (this);
+        jb.setActionCommand("edit");
+        buttonPanel.add (jb);
+   
+        this.setTitle("Periphyton backup Table, periTest2Table.java learn to save data to MySQL,version-2, 2009-04-20");
+    }
+  public void actionPerformed (ActionEvent e)
+  {
+      //code for JButtons go here
+	  if ("edit".equals(e.getActionCommand())){
+	     System.out.println("ActionEvent = "+e);
+	  }
+	  if ("add".equals(e.getActionCommand())){
+		  try { //  Connect to the Database, need an input form 
+	       	  Class.forName("com.mysql.jdbc.Driver");
+	   		  String driver = "com.mysql.jdbc.Driver";
+	   		  String url = "jdbc:mysql://192.168.1.11/test";
+	   		  String username = "esf_user";
+	   		  String password = "esf_pass";
+	   		  Class.forName(driver); // load MySQL driver 475 8730
+	   		  Connection con = DriverManager.getConnection(url, username, password); //insert a row into table
+	   		  String sqladd = "insert into test.jerryperibackup (pdate,sid,lid,cid,rep,matrix,ptype,name,volafterwash_mL, predilutionaliquid_mL, 1stdilution_mL, " +
+	                          "1stsubsample_mL, 2nddilution_ml, 2ndsubsamlpe_mL, 3rddilution_mL, 47mmfiltervolume_mL,25mmfiltervolume_mL, chlafiltervolume_mL, 47mmboatfilterwt_g,  47mmafterdrying_g,47mmwtafterashing_g, 25mmboatfilterwt_g, 25mmwtafterdrying_g, foilwt_g, foilname, foilareawtslope,chla_ug, comments) values"+ 
+                              "('2009-04-20','W01','G03','R',1,'BP','GVL','UKN',1,0,1600,1,1,1,1,55,null,55,1.1816,1.1977,1.1954,null,null,0.4660,'Target',0.0040855,18.58320,null);";
+          Statement stmt1 = con.prepareStatement("sqladd");
+          int rs1 = stmt1.executeUpdate(sqladd); 
+		  System.out.println("ActionEvent = "+e+"rs1 = "+rs1);
+	      }
+		  catch(Exception e1) {
+	           System.out.println( e1 );
+	      }
+		  //rs1.close();
+          //stmt1.close();
+	  }
+  }
+    public static void main(String[] args)
+    {
+        periTest2Table frame = new periTest2Table();
+        frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
+        frame.pack();
+        frame.setLocation(20, 20);
+        frame.setSize(1000, 700);
+        frame.setVisible(true);
+    }
+   
+   class MultiLineHeaderRenderer extends JList implements
+   TableCellRenderer {
+	   /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public MultiLineHeaderRenderer(){
+		setOpaque(true);
+		setForeground(UIManager.getColor("TableHeader.foreground"));
+		setBackground(UIManager.getColor("TableHeader.background"));
+		setBorder(UIManager.getBorder("TableHeader.cellBorder"));
+		ListCellRenderer renderer = getCellRenderer();
+		((JLabel)renderer).setHorizontalAlignment(JLabel.CENTER);
+		setCellRenderer(renderer);
+	   }
+
+	public Component getTableCellRendererComponent(JTable table, Object value,
+		   boolean isSelected, boolean hasFocus, int row, int colunm) {
+		   setFont(table.getFont());
+		   String str = (value == null) ? "" : value.toString();
+		   BufferedReader br = new BufferedReader(new StringReader(str));
+		   String line;
+		   Vector<String> v = new Vector<String>();
+		   try {
+		       while ((line = br.readLine()) != null )
+			       v.addElement(line);
+		       }catch (IOException ex) {
+			   ex.printStackTrace();
+		   }
+		   setListData(v);
+		   return this;
+   }
+  }
+}
